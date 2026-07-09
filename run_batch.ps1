@@ -1,17 +1,27 @@
-wbLog$ErrorActionPreference = "Stop"
+param(
+    [string]$WorkbenchCommand = $env:WB_COMMAND,
+    [Parameter(Mandatory = $true)][string]$DtseriesDir,
+    [Parameter(Mandatory = $true)][string]$OutDir
+)
 
-$wb = "E:\resarch_data\fMRI\workbench-windows64-v2.1.0\workbench\bin_windows64\wb_command.exe"
+$ErrorActionPreference = "Stop"
 
-$dtseriesdir = "E:\resarch_data\fMRI\fMRI_DMT\dtseries\DMT_DMT_dtseries"
-$outDir = "F:\research\dconn\results\DMT\group_dconn"
+if ([string]::IsNullOrWhiteSpace($WorkbenchCommand)) {
+    throw "Set -WorkbenchCommand or the WB_COMMAND environment variable."
+}
+if (-not (Test-Path -LiteralPath $WorkbenchCommand)) {
+    throw "Workbench command not found: $WorkbenchCommand"
+}
 
-New-Item -ItemType Directory -Force -Path $outDir | Out-Null
-$tmpDir = Join-Path $outDir "tmp"
+$wb = $WorkbenchCommand
+
+New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
+$tmpDir = Join-Path $OutDir "tmp"
 New-Item -ItemType Directory -Force -Path $tmpDir | Out-Null
 
 $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
-$transcriptLog = Join-Path $outDir "transcript_$stamp.log"
-$wbLog         = Join-Path $outDir "wb_$stamp.log"
+$transcriptLog = Join-Path $OutDir "transcript_$stamp.log"
+$wbLog         = Join-Path $OutDir "wb_$stamp.log"
 
 Start-Transcript -Path $transcriptLog -Append | Out-Null
 Write-Host "Transcript: $transcriptLog" -ForegroundColor Yellow
@@ -38,8 +48,8 @@ function Invoke-WBCommand {
 }
 
 # ---- collect inputs (include recurse if needed) ----
-$files = Get-ChildItem -Path $dtseriesdir -Filter "*dtseries.nii" -File | Sort-Object Name
-if ($files.Count -lt 2) { throw "No dtseries found under: $dtseriesdir" }
+$files = Get-ChildItem -Path $DtseriesDir -Filter "*dtseries.nii" -File | Sort-Object Name
+if ($files.Count -lt 2) { throw "No dtseries found under: $DtseriesDir" }
 
 Write-Host ("Found {0} dtseries files" -f $files.Count) -ForegroundColor Yellow
 
@@ -93,10 +103,10 @@ for ($i=0; $i -lt $files.Count; $i++) {
 Write-Progress -Activity "Per-subject dconn pipeline (L/R cortex)" -Completed
 
 # ---- group outputs (DO NOT overwrite these with relative paths) ----
-$groupL   = Join-Path $outDir "group_L_zcorr.dconn.nii"
-$groupR   = Join-Path $outDir "group_R_zcorr.dconn.nii"
-$groupL_r = Join-Path $outDir "group_L_r.dconn.nii"
-$groupR_r = Join-Path $outDir "group_R_r.dconn.nii"
+$groupL   = Join-Path $OutDir "group_L_zcorr.dconn.nii"
+$groupR   = Join-Path $OutDir "group_R_zcorr.dconn.nii"
+$groupL_r = Join-Path $OutDir "group_L_r.dconn.nii"
+$groupR_r = Join-Path $OutDir "group_R_r.dconn.nii"
 
 # group average
 $cmdL = @("-cifti-average", $groupL) + ($LzList | ForEach-Object { @("-cifti", $_) })

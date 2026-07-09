@@ -1,52 +1,26 @@
 param(
     [string]$PythonExe = "python",
-    [string]$PipelineScript = "E:\resarch_data\fMRI\toolboxpy\gradient\Margulies\margulies_pipeline_merged.py",
+    [string]$PipelineScript = (Join-Path $PSScriptRoot "margulies_pipeline_merged.py"),
+    [Parameter(Mandatory = $true)][string]$JobConfig,
     [switch]$ContinueOnError
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-# Add jobs here. One job runs at a time to avoid memory spikes.
-# Required keys:
-#   dconn, header_ref, surf_gii, out_basedir, hemi
-$Jobs = @(
-    @{
-        dconn       = "F:\research\dconn\results\DMTDMT\group_dconn\group_L_r.dconn.nii"
-        header_ref  = "E:\resarch_data\fMRI\fMRI_DMT\dtseries\DMT_DMT_dtseries\DMT_DMT_S01_Atlas_s0.dtseries.nii"
-        surf_gii    = "E:\resarch_data\fMRI\toolboxpy\testdata\L.flat.32k_fs_LR.surf.gii"
-        out_basedir = "F:\research\dconn\gradients\DMT_DMT_L"
-        hemi        = "left"
-    }
-    @{
-        dconn       = "F:\research\dconn\results\DMTDMT\group_dconn\group_R_r.dconn.nii"
-        header_ref  = "E:\resarch_data\fMRI\fMRI_DMT\dtseries\DMT_DMT_dtseries\DMT_DMT_S01_Atlas_s0.dtseries.nii"
-        surf_gii    = "E:\resarch_data\fMRI\toolboxpy\testdata\R.flat.32k_fs_LR.surf.gii"
-        out_basedir = "F:\research\dconn\gradients\DMT_DMT_R"
-        hemi        = "right"
-    },
-    @{
-        dconn       = "F:\research\dconn\results\DMTPCB\group_dconn\group_L_r.dconn.nii"
-        header_ref  = "E:\resarch_data\fMRI\fMRI_DMT\dtseries\DMT_PCB_dtseries\DMT_PCB_S01_Atlas_s0.dtseries.nii"
-        surf_gii    = "E:\resarch_data\fMRI\toolboxpy\testdata\L.flat.32k_fs_LR.surf.gii"
-        out_basedir = "F:\research\dconn\gradients\DMT_PCB_L"
-        hemi        = "left"
-    }
-    @{
-        dconn       = "F:\research\dconn\results\DMTPCB\group_dconn\group_R_r.dconn.nii"
-        header_ref  = "E:\resarch_data\fMRI\fMRI_DMT\dtseries\DMT_PCB_dtseries\DMT_PCB_S01_Atlas_s0.dtseries.nii"
-        surf_gii    = "E:\resarch_data\fMRI\toolboxpy\testdata\R.flat.32k_fs_LR.surf.gii"
-        out_basedir = "F:\research\dconn\gradients\DMT_PCB_R"
-        hemi        = "right"
-    }
-)
+# JobConfig must be a CSV with columns:
+# dconn,header_ref,surf_gii,out_basedir,hemi
+if (-not (Test-Path -LiteralPath $JobConfig)) {
+    throw "Job config not found: $JobConfig"
+}
+$Jobs = @(Import-Csv -LiteralPath $JobConfig)
 
 if (-not (Test-Path -LiteralPath $PipelineScript)) {
     throw "Pipeline script not found: $PipelineScript"
 }
 
 if ($Jobs.Count -eq 0) {
-    throw "No jobs configured. Edit `$Jobs in this script."
+    throw "No jobs configured in: $JobConfig"
 }
 
 Write-Host "Total jobs: $($Jobs.Count)"
@@ -58,7 +32,7 @@ for ($i = 0; $i -lt $Jobs.Count; $i++) {
     $jobIndex = $i + 1
 
     foreach ($key in @("dconn", "header_ref", "surf_gii", "out_basedir", "hemi")) {
-        if (-not $job.ContainsKey($key) -or [string]::IsNullOrWhiteSpace([string]$job[$key])) {
+        if ($key -notin $job.PSObject.Properties.Name -or [string]::IsNullOrWhiteSpace([string]$job.$key)) {
             throw "Job #$jobIndex missing required key: $key"
         }
     }

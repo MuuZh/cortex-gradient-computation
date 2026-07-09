@@ -36,43 +36,29 @@ Step 1 creates group-level left/right cortical dense connectivity (`.dconn.nii`)
 
 Step 2 takes those group-level `.dconn.nii` files and computes diffusion map embeddings, affinity matrices, and summary figures.
 
-## Hard-coded paths that must be edited
+## Local paths
 
-Before using these scripts on your own data, you must update several hard-coded paths.
+The scripts do not contain local absolute paths. Provide local paths at runtime through PowerShell parameters, a job CSV, or environment variables.
 
-### In `run_batch.ps1`
+### `run_batch.ps1`
 
-Edit these variables near the top of the script:
+Required paths:
 
-- `$wb`
-  - Path to `wb_command.exe` from Connectome Workbench.
-- `$dtseriesdir`
-  - Directory containing the input subject `.dtseries.nii` files.
-- `$outDir`
-  - Output directory where the group connectivity results and log files will be written.
+- `-WorkbenchCommand`: path to `wb_command.exe` from Connectome Workbench. You may also set the `WB_COMMAND` environment variable.
+- `-DtseriesDir`: directory containing input subject `.dtseries.nii` files. The script scans this directory only, not nested subdirectories.
+- `-OutDir`: output directory for group connectivity results and log files.
 
-### In `run_margulies_pipeline_batch.ps1`
+### `run_margulies_pipeline_batch.ps1`
 
-Edit these defaults / job entries:
+The batch embedding script reads jobs from a CSV file. Required columns:
 
-- `$PythonExe`
-  - Python executable to use, if `python` on PATH is not the correct environment.
-- `$PipelineScript`
-  - Path to `margulies_pipeline_merged.py`.
-- `$Jobs`
-  - This is the main batch configuration. Each job must define:
-    - `dconn`: input group `.dconn.nii` file
-    - `header_ref`: reference CIFTI file used to recover the brain model / hemisphere header
-    - `surf_gii`: hemisphere surface `.surf.gii` file used for plotting
-    - `out_basedir`: output directory for this embedding job
-    - `hemi`: `left` or `right`
+- `dconn`: input group `.dconn.nii` file
+- `header_ref`: reference CIFTI file used to recover the brain model / hemisphere header
+- `surf_gii`: hemisphere surface `.surf.gii` file used for plotting
+- `out_basedir`: output directory for this embedding job
+- `hemi`: `left` or `right`
 
-### In `margulies_pipeline_merged.py`
-
-Edit this line:
-
-- `package_path`
-  - Path to your local `mapalign` source directory if it is not already installed in a way that Python can import directly.
+If `mapalign` is not installed in your Python environment, set `MAPALIGN_PATH` to the local `mapalign` source directory before running `margulies_pipeline_merged.py`.
 
 ## Step 1: Run `run_batch.ps1`
 
@@ -117,7 +103,7 @@ From PowerShell:
 
 ```powershell
 cd compute_embeddings_release
-.\run_batch.ps1
+.\run_batch.ps1 -WorkbenchCommand "<path-to-wb_command.exe>" -DtseriesDir "<dtseries-dir>" -OutDir "<group-dconn-output-dir>"
 ```
 
 ## Step 2: Run `run_margulies_pipeline_batch.ps1`
@@ -128,7 +114,7 @@ cd compute_embeddings_release
 
 - Python with the required packages installed
 - access to `margulies_pipeline_merged.py`
-- `mapalign` available through the hard-coded `package_path` or your Python environment
+- `mapalign` available through `MAPALIGN_PATH` or your Python environment
 - one or more group-level `.dconn.nii` files produced by Step 1
 - one reference CIFTI file per dataset / hemisphere configuration (`header_ref`)
 - one matching surface GIFTI file (`surf_gii`) for each hemisphere
@@ -168,18 +154,17 @@ From PowerShell:
 
 ```powershell
 cd compute_embeddings_release
-.\run_margulies_pipeline_batch.ps1
+.\run_margulies_pipeline_batch.ps1 -JobConfig "<jobs.csv>"
 ```
 
 If needed, you can also specify a Python executable explicitly:
 
 ```powershell
-.\run_margulies_pipeline_batch.ps1 -PythonExe C:\path\to\python.exe
+.\run_margulies_pipeline_batch.ps1 -JobConfig "<jobs.csv>" -PythonExe "<python-executable>"
 ```
 
 ## Notes for users adapting this release
 
-- The scripts are currently written with explicit local paths and are not yet parameterized for general distribution.
-- Before sharing or reusing them, check every dataset-specific path in the PowerShell job lists.
+- Keep dataset-specific paths in your local job CSV or command-line invocation, not in this repository.
 - `header_ref` must come from a CIFTI file whose brain model matches the hemisphere and vertex layout expected by the `.dconn.nii` file.
 - `surf_gii` must match the same hemisphere and vertex count.

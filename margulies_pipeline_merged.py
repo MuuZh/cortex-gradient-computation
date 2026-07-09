@@ -1,4 +1,5 @@
 import argparse
+import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -9,8 +10,9 @@ from sklearn.metrics import pairwise_distances
 from tqdm import trange
 import seaborn as sns
 import sys
-package_path = "E:/resarch_data/fMRI/toolboxpy/gradient/mapalign-master"
-if package_path not in sys.path:
+
+package_path = os.environ.get("MAPALIGN_PATH")
+if package_path and package_path not in sys.path:
     sys.path.append(package_path)
 from mapalign import embed
 
